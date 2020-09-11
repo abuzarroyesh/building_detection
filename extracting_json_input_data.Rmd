@@ -1,0 +1,53 @@
+---
+title: "buildings"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+
+files <- list.files("train/labels")
+
+paths <- str_glue("train/labels/{files}")
+
+reading_metadata <- function(path) {
+  as_tibble(fromJSON(path)$metadata) 
+}
+
+reading_properties <- function(path) {
+  data <- fromJSON(path)
+  
+  if (!is.null(data$features$lng_lat$properties)) {
+    data$features$lng_lat$properties %>% 
+      mutate(
+        img_name = str_c(str_remove_all(path, "train/labels/|.json"), ".png"),
+        lng_lat_wkt = data$features$lng_lat$wkt, 
+        xy_wkt = data$features$xy$wkt
+      )
+  }
+}
+
+
+metadata <- 
+  paths %>% 
+  map_dfr(~ reading_metadata(.)) %>% 
+  sample_n(100)
+
+properties <- 
+  paths %>% 
+  map_dfr(reading_properties)
+
+metadata %>% 
+  left_join(properties, by = "img_name") %>% 
+  filter(!is.na(xy_wkt)) %>% 
+  # filter(str_detect(img_name, "pre"))
+  write_csv("sampled_data_train.csv")
+```
+
+
+
+
+
+
+
